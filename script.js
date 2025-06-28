@@ -2,9 +2,16 @@
 // CONFIGURAÇÕES E VARIÁVEIS GLOBAIS
 // ========================================
 
-// Configurações da API
+// Configurações da API - Detecta automaticamente se está no Railway
 const API_CONFIG = {
-  baseUrl: localStorage.getItem('apiUrl') || 'http://localhost:8000',
+  baseUrl: (() => {
+    // Se estiver no Railway, usa a URL atual
+    if (window.location.hostname.includes('railway.app')) {
+      return window.location.origin;
+    }
+    // Senão, usa a URL configurada no localStorage ou padrão
+    return localStorage.getItem('apiUrl') || 'http://localhost:8000';
+  })(),
   timeout: 10000,
   retryAttempts: 3
 };
@@ -1406,15 +1413,12 @@ function renderGraficoEconomia() {
 
 function abrirDetalhes(indice) {
   const orcamento = orcamentos[indice];
-  
-  // Calcular totais e encontrar melhor fornecedor
   const itens = typeof orcamento.itens === 'string' ? JSON.parse(orcamento.itens) : orcamento.itens;
-  
+
   let html = `
     <div class="modal-overlay" style="display: flex;">
-      <div class="modal" style="max-width: 800px;">
+      <div class="modal" style="max-width: 900px;">
         <h2>📋 Detalhes do Orçamento #${orcamento.numero}</h2>
-        
         <div class="grid" style="margin-bottom: 2rem;">
           <div><strong>Data:</strong> ${new Date(orcamento.data).toLocaleDateString('pt-BR')}</div>
           <div><strong>Validade:</strong> ${orcamento.validade} dias</div>
@@ -1422,7 +1426,6 @@ function abrirDetalhes(indice) {
           <div><strong>Pagamento:</strong> ${orcamento.forma_pagamento}</div>
           ${orcamento.tags ? `<div><strong>Tags:</strong> ${orcamento.tags}</div>` : ''}
         </div>
-        
         ${orcamento.observacoes ? `
         <div style="margin-bottom: 1rem;">
           <strong>Observações:</strong>
@@ -1431,7 +1434,6 @@ function abrirDetalhes(indice) {
           </p>
         </div>
         ` : ''}
-        
         ${orcamento.decisao ? `
         <div style="margin-bottom: 1rem;">
           <strong>Decisão:</strong>
@@ -1440,61 +1442,19 @@ function abrirDetalhes(indice) {
           </p>
         </div>
         ` : ''}
-        
         <h3>📦 Itens do Orçamento</h3>
+        <div class="modal-tabs-container">
+          <div class="modal-tabs-header" id="modalTabsHeader"></div>
+          <div class="modal-tabs-content" id="modalTabsContent"></div>
+        </div>
   `;
-  
-  if (itens && itens.length > 0) {
-    itens.forEach((item, index) => {
-      html += `
-        <div class="item-card">
-          <h4>Item ${index + 1}: ${item.descricao}</h4>
-          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
-            <div><strong>Categoria:</strong> ${item.categoria}</div>
-            <div><strong>Quantidade:</strong> ${item.quantidade} ${item.unidade}</div>
-          </div>
-          
-          <h5>Fornecedores:</h5>
-      `;
-      
-      if (item.fornecedores && item.fornecedores.length > 0) {
-        // Calcular totais para encontrar o melhor
-        const fornecedoresComTotal = item.fornecedores.map(f => ({
-          ...f,
-          total: (parseFloat(f.preco) * parseFloat(item.quantidade)) + parseFloat(f.frete || 0)
-        }));
-        
-        const menorTotal = Math.min(...fornecedoresComTotal.map(f => f.total));
-        
-        fornecedoresComTotal.forEach(fornecedor => {
-          const isMelhor = fornecedor.total === menorTotal;
-          html += `
-            <div class="fornecedor ${isMelhor ? 'melhor' : ''}">
-              <div>
-                <strong>${fornecedor.nome}</strong>
-                ${isMelhor ? ' 🏆' : ''}
-              </div>
-              <div>
-                <strong>R$ ${fornecedor.total.toFixed(2)}</strong>
-                <br>
-                <small>Preço: R$ ${fornecedor.preco} | Frete: R$ ${fornecedor.frete || 0}</small>
-              </div>
-            </div>
-          `;
-        });
-      }
-      
-      html += `</div>`;
-    });
-  }
-  
+
   // Anexos
   if (orcamento.anexos && orcamento.anexos.length > 0) {
     html += `
       <h3>📎 Anexos</h3>
       <div style="display: flex; flex-wrap: wrap; gap: 1rem;">
     `;
-    
     orcamento.anexos.forEach(anexo => {
       const icon = getFileIcon(anexo.tipo_arquivo);
       html += `
@@ -1507,10 +1467,9 @@ function abrirDetalhes(indice) {
         </div>
       `;
     });
-    
     html += `</div>`;
   }
-  
+
   html += `
         <div class="modal-actions">
           <button onclick="editarOrcamento(${indice})" class="btn-save">✏️ Editar</button>
@@ -1519,8 +1478,53 @@ function abrirDetalhes(indice) {
       </div>
     </div>
   `;
-  
+
   document.body.insertAdjacentHTML('beforeend', html);
+
+  // Renderizar abas dos itens
+  if (itens && itens.length > 0) {
+    const tabsHeader = document.getElementById('modalTabsHeader');
+    const tabsContent = document.getElementById('modalTabsContent');
+    tabsHeader.innerHTML = '';
+    tabsContent.innerHTML = '';
+    itens.forEach((item, idx) => {
+      // Aba
+      const tab = document.createElement('div');
+      tab.className = 'modal-tab-item' + (idx === 0 ? ' active' : '');
+      tab.dataset.tabIndex = idx;
+      tab.innerHTML = `<span class="tab-title">${item.descricao || `Item ${idx + 1}`}</span>`;
+      tab.onclick = function() {
+        document.querySelectorAll('.modal-tab-item').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.modal-tab-panel').forEach(p => p.classList.remove('active'));
+        tab.classList.add('active');
+        document.getElementById(`modalTabPanel${idx}`).classList.add('active');
+      };
+      tabsHeader.appendChild(tab);
+      // Painel
+      const panel = document.createElement('div');
+      panel.className = 'modal-tab-panel' + (idx === 0 ? ' active' : '');
+      panel.id = `modalTabPanel${idx}`;
+      panel.innerHTML = `
+        <div style="margin-bottom:1rem;">
+          <strong>Categoria:</strong> ${item.categoria}<br>
+          <strong>Quantidade:</strong> ${item.quantidade} ${item.unidade}
+        </div>
+        <h5>Fornecedores:</h5>
+        <div>
+          ${item.fornecedores && item.fornecedores.length > 0 ? item.fornecedores.map(f => {
+            const total = (parseFloat(f.preco) * parseFloat(item.quantidade)) + parseFloat(f.frete || 0);
+            const menorTotal = Math.min(...item.fornecedores.map(f2 => (parseFloat(f2.preco) * parseFloat(item.quantidade)) + parseFloat(f2.frete || 0)));
+            const isMelhor = total === menorTotal;
+            return `<div class=\"fornecedor${isMelhor ? ' melhor' : ''}\">
+              <div><strong>${f.nome}</strong> ${isMelhor ? '🏆' : ''}</div>
+              <div><strong>R$ ${total.toFixed(2)}</strong><br><small>Preço: R$ ${f.preco} | Frete: R$ ${f.frete || 0}</small></div>
+            </div>`;
+          }).join('') : '<div style=\"color:#888\">Nenhum fornecedor cadastrado</div>'}
+        </div>
+      `;
+      tabsContent.appendChild(panel);
+    });
+  }
 }
 
 // ========================================
