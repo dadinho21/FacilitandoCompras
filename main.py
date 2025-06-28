@@ -10,6 +10,7 @@ from datetime import datetime
 import psycopg2
 from psycopg2.extras import RealDictCursor
 import logging
+import time
 
 # Configuração de logging
 logging.basicConfig(level=logging.INFO)
@@ -38,14 +39,30 @@ DATABASE_CONFIG = {
 # Configuração para Railway
 PORT = int(os.getenv("PORT", 8000))
 
+# Log das configurações para debug
+logger.info(f"Configuração do banco: {DATABASE_CONFIG}")
+logger.info(f"Porta da aplicação: {PORT}")
+
 def get_db_connection():
     """Cria conexão com o banco de dados PostgreSQL"""
-    try:
-        conn = psycopg2.connect(**DATABASE_CONFIG)
-        return conn
-    except Exception as e:
-        logger.error(f"Erro ao conectar com banco de dados: {e}")
-        raise HTTPException(status_code=500, detail="Erro de conexão com banco de dados")
+    max_retries = 3
+    retry_delay = 2
+    
+    for attempt in range(max_retries):
+        try:
+            logger.info(f"Tentativa {attempt + 1} de conexão com banco de dados...")
+            conn = psycopg2.connect(**DATABASE_CONFIG)
+            logger.info("Conexão com banco de dados estabelecida com sucesso!")
+            return conn
+        except Exception as e:
+            logger.error(f"Erro na tentativa {attempt + 1}: {e}")
+            if attempt < max_retries - 1:
+                logger.info(f"Aguardando {retry_delay} segundos antes da próxima tentativa...")
+                time.sleep(retry_delay)
+                retry_delay *= 2  # Backoff exponencial
+            else:
+                logger.error("Todas as tentativas de conexão falharam")
+                raise HTTPException(status_code=500, detail="Erro de conexão com banco de dados")
 
 def init_database():
     """Inicializa as tabelas do banco de dados"""
