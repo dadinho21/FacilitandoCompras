@@ -35,6 +35,9 @@ DATABASE_CONFIG = {
     "port": os.getenv("DB_PORT", "5432")
 }
 
+# Configuração para Railway
+PORT = int(os.getenv("PORT", 8000))
+
 def get_db_connection():
     """Cria conexão com o banco de dados PostgreSQL"""
     try:
@@ -593,4 +596,4 @@ async def obter_dashboard():
 app.mount("/", StaticFiles(directory="../", html=True), name="static")
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000) 
+    uvicorn.run(app, host="0.0.0.0", port=PORT) 
