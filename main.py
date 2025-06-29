@@ -29,10 +29,10 @@ app.add_middleware(
 
 # Configuração do banco de dados PostgreSQL
 DATABASE_CONFIG = {
-    "host": os.getenv("DB_HOST", "localhost"),
-    "database": os.getenv("DB_NAME", "controle_orcamentos"),
-    "user": os.getenv("DB_USER", "postgres"),
-    "password": os.getenv("DB_PASSWORD", "password"),
+    "host": os.getenv("DB_HOST"),
+    "database": os.getenv("DB_NAME"),
+    "user": os.getenv("DB_USER"),
+    "password": os.getenv("DB_PASSWORD"),
     "port": os.getenv("DB_PORT", "5432")
 }
 
