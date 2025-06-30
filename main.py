@@ -609,8 +609,8 @@ async def obter_dashboard():
         cursor.close()
         conn.close()
 
-# Servir arquivos estáticos (frontend) na raiz do projeto
-app.mount("/", StaticFiles(directory=".", html=True), name="static")
+# Servir arquivos estáticos (frontend) a partir da raiz do repositório
+app.mount("/", StaticFiles(directory="../", html=True), name="static")
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=PORT) 
