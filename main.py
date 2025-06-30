@@ -46,9 +46,6 @@ PORT = int(os.getenv("PORT", 8000))
 logger.info(f"Configuração do banco: {DATABASE_CONFIG}")
 logger.info(f"Porta da aplicação: {PORT}")
 
-DATABASE_URL = os.getenv("DATABASE_URL")
-conn = psycopg2.connect(DATABASE_URL)
-
 def get_db_connection():
     """Cria conexão com o banco de dados PostgreSQL"""
     max_retries = 3
@@ -423,5 +420,4 @@ async def obter_dashboard():
         conn.close()
 
 if __name__ == "__main__":
-    import uvicorn
     uvicorn.run("main:app", host="0.0.0.0", port=PORT, reload=False) 
